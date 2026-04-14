@@ -1,164 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zipp – 10 Min Delivery</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        /* [KEEPING YOUR ORIGINAL STYLES BUT ADDING PAYMENT UI] */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Sora', sans-serif; background: #F0F0F5; color: #111; }
-        :root { --yellow: #FFD600; --dark: #0F0F0F; --green: #16A34A; --white: #FFFFFF; --border: #E5E5EA; }
-        
-        .app-container { max-width: 480px; margin: 0 auto; background: var(--white); min-height: 100vh; position: relative; }
-        .header { background: var(--yellow); padding: 16px; position: sticky; top: 0; z-index: 100; }
-        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; }
-        .product-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
-        
-        /* NEW PAYMENT STYLES */
-        .payment-modal { padding: 20px; text-align: left; }
-        .payment-option { border: 1.5px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 12px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
-        .payment-option.active { border-color: var(--green); background: #f0fdf4; }
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
-        .input-group input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; }
-        
-        .loading-screen { text-align: center; padding: 50px 20px; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--green); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+<script>
+  // This function triggers when the user clicks your "Checkout" or "Place Order" button
+  function triggerPayment(amount) {
+    // Create the overlay background
+    const overlay = document.createElement('div');
+    overlay.id = 'payment-overlay';
+    overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; display:flex; align-items:center; justify-content:center; font-family: sans-serif;";
+    
+    // The Razorpay-style popup box
+    overlay.innerHTML = `
+      <div style="background:white; width:350px; border-radius:10px; overflow:hidden; animation: slideUp 0.3s ease-out;">
+        <div style="background:#2B3445; color:white; padding:20px; text-align:center;">
+          <h3 style="margin:0;">Zipp Checkout</h3>
+          <p style="margin:5px 0 0; opacity:0.8;">Amount to Pay: ₹${amount}</p>
+        </div>
+        <div style="padding:20px;">
+          <label style="display:block; font-size:12px; margin-bottom:5px; color:#666;">Phone Number</label>
+          <input type="text" placeholder="9876543210" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; margin-bottom:15px;">
+          
+          <div style="border:1px solid #eee; border-radius:8px; padding:10px; margin-bottom:15px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:20px;">💳</span>
+            <div><strong>Card</strong><br/><small style="color:#888;">Visa, MasterCard, RuPay</small></div>
+          </div>
+          
+          <div style="border:1px solid #eee; border-radius:8px; padding:10px; margin-bottom:15px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:20px;">📱</span>
+            <div><strong>UPI</strong><br/><small style="color:#888;">Google Pay, PhonePe, Paytm</small></div>
+          </div>
 
-        .success-screen { text-align: center; padding: 40px 20px; animation: fadeIn 0.5s ease; }
-        .success-icon { font-size: 60px; color: var(--green); margin-bottom: 15px; }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+          <button id="pay-button" style="width:100%; background:#3399FF; color:white; border:none; padding:15px; border-radius:5px; font-weight:bold; cursor:pointer;">
+            PAY ₹${amount}
+          </button>
+          <button onclick="document.getElementById('payment-overlay').remove()" style="width:100%; background:none; border:none; color:#888; margin-top:10px; cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+      <style>
+        @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      </style>
+    `;
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    document.body.appendChild(overlay);
 
-        const PRODUCTS = [
-            { id: 1, name: 'Fresh Bananas', emoji: '🍌', price: 49, unit: '1 dozen' },
-            { id: 2, name: 'Red Apples', emoji: '🍎', price: 129, unit: '1 kg' },
-            { id: 3, name: 'Full Cream Milk', emoji: '🥛', price: 68, unit: '1 litre' },
-            { id: 4, name: 'Potato Chips', emoji: '🥔', price: 30, unit: '100 g' }
-        ];
-
-        function App() {
-            const [cart, setCart] = useState({});
-            const [view, setView] = useState('shop'); // shop, checkout, processing, success
-            const [payMethod, setPayMethod] = useState('upi');
-
-            const addToCart = (id) => setCart(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
-            const cartTotal = PRODUCTS.reduce((sum, p) => sum + (p.price * (cart[p.id] || 0)), 0);
-
-            const handlePayment = () => {
-                setView('processing');
-                setTimeout(() => setView('success'), 3000); // Simulate bank delay
-            };
-
-            if (view === 'processing') {
-                return (
-                    <div className="app-container loading-screen">
-                        <div className="spinner"></div>
-                        <h2>Verifying Payment...</h2>
-                        <p>Please do not press back or refresh.</p>
-                    </div>
-                );
-            }
-
-            if (view === 'success') {
-                return (
-                    <div className="app-container success-screen">
-                        <div className="success-icon">✅</div>
-                        <h1>Order Placed!</h1>
-                        <p>Your groceries will arrive in 10 minutes.</p>
-                        <button 
-                            onClick={() => {setCart({}); setView('shop');}}
-                            style={{marginTop: 20, padding: '12px 24px', background: '#000', color: '#fff', border: 'none', borderRadius: '8px'}}
-                        >
-                            Back to Shopping
-                        </button>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="app-container">
-                    <div className="header">
-                        <h1>Zipp Delivery</h1>
-                        {cartTotal > 0 && view === 'shop' && (
-                            <button onClick={() => setView('checkout')} style={{float: 'right', padding: '8px', background: '#000', color: '#fff', borderRadius: '8px'}}>
-                                Checkout (₹{cartTotal})
-                            </button>
-                        )}
-                    </div>
-
-                    {view === 'shop' ? (
-                        <div className="product-grid">
-                            {PRODUCTS.map(p => (
-                                <div key={p.id} className="product-card">
-                                    <div style={{fontSize: 40}}>{p.emoji}</div>
-                                    <h3>{p.name}</h3>
-                                    <p>₹{p.price}</p>
-                                    <button onClick={() => addToCart(p.id)} style={{background: '#16A34A', color: '#fff', border: 'none', padding: '5px 15px', borderRadius: '5px', marginTop: '10px'}}>Add</button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="payment-modal">
-                            <button onClick={() => setView('shop')} style={{border: 'none', background: 'none', fontWeight: 'bold', marginBottom: '10px'}}>← Back</button>
-                            <h2>Secure Payment</h2>
-                            <p style={{marginBottom: 20, color: '#666'}}>Total Payable: ₹{cartTotal}</p>
-
-                            <div className={`payment-option ${payMethod === 'upi' ? 'active' : ''}`} onClick={() => setPayMethod('upi')}>
-                                <span>📱</span>
-                                <div><strong>UPI (PhonePe / Google Pay)</strong><br/><small>Fast & Instant</small></div>
-                            </div>
-
-                            <div className={`payment-option ${payMethod === 'card' ? 'active' : ''}`} onClick={() => setPayMethod('card')}>
-                                <span>💳</span>
-                                <div><strong>Credit / Debit Card</strong><br/><small>Visa, Mastercard, RuPay</small></div>
-                            </div>
-
-                            {payMethod === 'card' && (
-                                <div className="card-form">
-                                    <div className="input-group">
-                                        <label>Card Number</label>
-                                        <input type="text" placeholder="1234 5678 9101 1121" />
-                                    </div>
-                                    <div style={{display: 'flex', gap: 10}}>
-                                        <div className="input-group">
-                                            <label>Expiry</label>
-                                            <input type="text" placeholder="MM/YY" />
-                                        </div>
-                                        <div className="input-group">
-                                            <label>CVV</label>
-                                            <input type="password" placeholder="***" />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <button 
-                                onClick={handlePayment}
-                                style={{width: '100%', padding: '16px', background: '#FFD600', border: 'none', borderRadius: '12px', fontWeight: '800', fontSize: '16px', marginTop: '20px'}}
-                            >
-                                Pay ₹{cartTotal} Now
-                            </button>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+    // Handle the "Payment" click
+    document.getElementById('pay-button').onclick = function() {
+      this.innerHTML = "Processing...";
+      this.style.opacity = "0.7";
+      
+      setTimeout(() => {
+        overlay.innerHTML = `
+          <div style="background:white; width:350px; border-radius:10px; padding:40px; text-align:center;">
+            <div style="font-size:50px; color:#4BB543; margin-bottom:10px;">✅</div>
+            <h2 style="margin:0;">Payment Successful</h2>
+            <p style="color:#666;">Order ID: #ZIPP${Math.floor(Math.random()*10000)}</p>
+            <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#000; color:#white; border-radius:5px; border:none; color:white; cursor:pointer;">Done</button>
+          </div>
+        `;
+      }, 2000);
+    };
+  }
+</script>
